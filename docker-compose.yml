@@ -1,0 +1,37 @@
+# Local AWS environment for this project (Floci, a LocalStack-compatible
+# emulator with no signup/auth-token requirement -- see ANALYSIS_AND_DESIGN.md
+# section 1 for why). This file exists so the environment is reproducible
+# from the repo instead of one-off CLI commands: `docker compose up -d`
+# brings up exactly what's been running throughout this project.
+
+services:
+  floci:
+    image: floci/floci:latest
+    container_name: floci
+    ports:
+      - "4566:4566"
+    environment:
+      - FLOCI_STORAGE_MODE=persistent
+      - FLOCI_SERVICES=s3,dynamodb,kinesis
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock  # Floci needs this to run real Lambda containers
+      - ./.floci:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4566/_floci/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  floci-ui:
+    image: floci/floci-ui:latest
+    container_name: floci-ui
+    network_mode: host  # simplest way for the UI to reach floci at localhost:4566
+    environment:
+      - FLOCI_ENDPOINT=http://localhost:4566
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - PORT=4501
+    depends_on:
+      floci:
+        condition: service_healthy
