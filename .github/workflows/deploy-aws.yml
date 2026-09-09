@@ -1,0 +1,45 @@
+name: Deploy to real AWS
+
+# Manual trigger only (Actions tab -> "Run workflow") -- this project builds
+# and tests against Floci locally; this workflow is only for the brief,
+# real-AWS demo window, not something that should run automatically.
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      AWS_ENV: aws
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: us-east-1
+      S3_BUCKET: spacex-engines-project
+      DYNAMODB_TABLE: latest_reading
+      KINESIS_STREAM: engine-telemetry
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install -r requirements.txt
+
+      - name: Create S3 bucket, DynamoDB table, Kinesis stream
+        run: python infra/setup.py
+
+      - name: Deploy streaming consumer Lambda
+        run: python infra/deploy_lambda.py
+
+      - name: Deploy batch ingestion Lambda
+        run: python infra/deploy_ingest_lambda.py
+
+      - name: Ingest batch data (Launch Library 2 + engine specs)
+        run: python -m src.batch.ingest_batch
+
+      - name: Transform to curated Parquet
+        run: python -m src.batch.transform_batch
+
+      - name: Train model
+        run: python -m src.ml.train_model
