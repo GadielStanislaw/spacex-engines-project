@@ -1,5 +1,5 @@
 """Package and deploy consumer.py as a real Lambda function, triggered by the
-Kinesis stream. Same script works against Floci (AWS_ENV=local) and a real
+SQS queue. Same script works against Floci (AWS_ENV=local) and a real
 AWS account (AWS_ENV=aws) -- only the .env values change.
 
 Usage: python infra/deploy_lambda.py
@@ -17,7 +17,7 @@ from botocore.exceptions import ClientError
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.config import (
     AWS_ENV, AWS_REGION, S3_BUCKET, DYNAMODB_TABLE,
-    KINESIS_STREAM, boto3_kwargs,
+    SQS_QUEUE, boto3_kwargs,
 )
 
 FUNCTION_NAME = "engine-telemetry-consumer"
@@ -33,7 +33,7 @@ PERMISSIONS_POLICY = {
     "Version": "2012-10-17",
     "Statement": [{
         "Effect": "Allow",
-        "Action": ["logs:*", "dynamodb:*", "s3:*", "kinesis:*"],
+        "Action": ["logs:*", "dynamodb:*", "s3:*", "sqs:*"],
         "Resource": "*",
     }],
 }
@@ -106,21 +106,23 @@ def ensure_function(lam, role_arn: str) -> str:
         return resp["FunctionArn"]
 
 
-def ensure_event_source_mapping(lam, kinesis):
-    stream_arn = kinesis.describe_stream(StreamName=KINESIS_STREAM)["StreamDescription"]["StreamARN"]
+def ensure_event_source_mapping(lam, sqs):
+    queue_url = sqs.get_queue_url(QueueName=SQS_QUEUE)["QueueUrl"]
+    queue_arn = sqs.get_queue_attributes(
+        QueueUrl=queue_url, AttributeNames=["QueueArn"]
+    )["Attributes"]["QueueArn"]
 
     existing = lam.list_event_source_mappings(FunctionName=FUNCTION_NAME)["EventSourceMappings"]
-    if any(m["EventSourceArn"] == stream_arn for m in existing):
-        print(f"[lambda] event source mapping already exists for {KINESIS_STREAM}")
+    if any(m["EventSourceArn"] == queue_arn for m in existing):
+        print(f"[lambda] event source mapping already exists for {SQS_QUEUE}")
         return
 
     lam.create_event_source_mapping(
-        EventSourceArn=stream_arn,
+        EventSourceArn=queue_arn,
         FunctionName=FUNCTION_NAME,
-        StartingPosition="LATEST",  # only new records going forward; this is a live feed, not a backlog to replay
         BatchSize=10,
     )
-    print(f"[lambda] created event source mapping: {KINESIS_STREAM} -> {FUNCTION_NAME}")
+    print(f"[lambda] created event source mapping: {SQS_QUEUE} -> {FUNCTION_NAME}")
 
 
 if __name__ == "__main__":
@@ -128,11 +130,11 @@ if __name__ == "__main__":
     kwargs = boto3_kwargs()
     iam = boto3.client("iam", **kwargs)
     lam = boto3.client("lambda", **kwargs)
-    kinesis = boto3.client("kinesis", **kwargs)
+    sqs = boto3.client("sqs", **kwargs)
 
     role_arn = ensure_role(iam)
     time.sleep(2)  # role propagation
     ensure_function(lam, role_arn)
     time.sleep(2)  # function must be Active before mapping
-    ensure_event_source_mapping(lam, kinesis)
+    ensure_event_source_mapping(lam, sqs)
     print("Done.")

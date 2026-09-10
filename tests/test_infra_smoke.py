@@ -1,4 +1,4 @@
-"""Smoke test: confirms S3, DynamoDB, and Kinesis are actually usable, not just
+"""Smoke test: confirms S3, DynamoDB, and SQS are actually usable, not just
 present. Run after `python infra/setup.py` and before any real ingestion.
 
 Usage: python tests/test_infra_smoke.py
@@ -10,7 +10,7 @@ from pathlib import Path
 import boto3
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from src.config import S3_BUCKET, DYNAMODB_TABLE, KINESIS_STREAM, boto3_kwargs
+from src.config import S3_BUCKET, DYNAMODB_TABLE, SQS_QUEUE, boto3_kwargs
 
 
 def check_s3():
@@ -35,29 +35,23 @@ def check_dynamodb():
     print("[PASS] DynamoDB: table ACTIVE, put/get/delete item OK")
 
 
-def check_kinesis():
-    kinesis = boto3.client("kinesis", **boto3_kwargs())
-    desc = kinesis.describe_stream(StreamName=KINESIS_STREAM)["StreamDescription"]
-    assert desc["StreamStatus"] == "ACTIVE", f"stream not active: {desc['StreamStatus']}"
-    shard_id = desc["Shards"][0]["ShardId"]
+def check_sqs():
+    sqs = boto3.client("sqs", **boto3_kwargs())
+    queue_url = sqs.get_queue_url(QueueName=SQS_QUEUE)["QueueUrl"]
 
-    # Get the iterator *before* putting the record (LATEST = only records from
-    # this point forward) so this test is correct regardless of how much
-    # backlog already sits in the stream from prior runs/producer bursts.
-    iterator = kinesis.get_shard_iterator(
-        StreamName=KINESIS_STREAM, ShardId=shard_id, ShardIteratorType="LATEST"
-    )["ShardIterator"]
-
-    kinesis.put_record(StreamName=KINESIS_STREAM, Data=b'{"smoke":"test"}', PartitionKey="smoke")
+    sqs.send_message(QueueUrl=queue_url, MessageBody='{"smoke":"test"}')
     time.sleep(1)
 
-    records = kinesis.get_records(ShardIterator=iterator, Limit=10)["Records"]
-    assert any(b'"smoke":"test"' in r["Data"] for r in records), "Kinesis record not found"
-    print("[PASS] Kinesis: stream ACTIVE, put/get record OK")
+    resp = sqs.receive_message(QueueUrl=queue_url, MaxNumberOfMessages=10, WaitTimeSeconds=2)
+    messages = resp.get("Messages", [])
+    assert any('"smoke":"test"' in m["Body"] for m in messages), "SQS message not found"
+    for m in messages:
+        sqs.delete_message(QueueUrl=queue_url, ReceiptHandle=m["ReceiptHandle"])
+    print("[PASS] SQS: queue reachable, send/receive/delete message OK")
 
 
 if __name__ == "__main__":
     check_s3()
     check_dynamodb()
-    check_kinesis()
+    check_sqs()
     print("\nAll infra smoke tests passed. Environment is ready for ingestion.")

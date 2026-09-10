@@ -12,7 +12,7 @@ services:
       - "4566:4566"
     environment:
       - FLOCI_STORAGE_MODE=persistent
-      - FLOCI_SERVICES=s3,dynamodb,kinesis
+      - FLOCI_SERVICES=s3,dynamodb,sqs
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock  # Floci needs this to run real Lambda containers
       - ./.floci:/app/data
