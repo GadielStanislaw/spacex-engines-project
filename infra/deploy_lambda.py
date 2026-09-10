@@ -16,7 +16,7 @@ from botocore.exceptions import ClientError
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.config import (
-    AWS_ENV, AWS_REGION, S3_BUCKET, DYNAMODB_TABLE,
+    AWS_ENV, S3_BUCKET, DYNAMODB_TABLE,
     SQS_QUEUE, boto3_kwargs,
 )
 
@@ -72,10 +72,12 @@ def env_vars() -> dict:
     # No endpoint override here: Floci auto-injects AWS_ENDPOINT_URL + temp
     # credentials into the Lambda container itself; on real AWS that env var
     # is simply absent, so boto3 falls back to real AWS. See consumer.py.
+    # AWS_REGION itself isn't set here -- it's a Lambda-reserved key that AWS
+    # injects into every function's environment automatically; setting it
+    # ourselves makes CreateFunction fail with InvalidParameterValueException.
     return {
         "S3_BUCKET": S3_BUCKET,
         "DYNAMODB_TABLE": DYNAMODB_TABLE,
-        "AWS_REGION": AWS_REGION,
     }
 
 
