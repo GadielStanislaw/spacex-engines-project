@@ -25,6 +25,7 @@ services:
   floci-ui:
     image: floci/floci-ui:latest
     container_name: floci-ui
+    profiles: ["ui"]  # not started by plain `docker compose up -d` -- only floci itself is needed day to day; bring the UI up on demand with `docker compose --profile ui up -d`
     network_mode: host  # simplest way for the UI to reach floci at localhost:4566
     environment:
       - FLOCI_ENDPOINT=http://localhost:4566

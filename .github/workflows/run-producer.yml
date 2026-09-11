@@ -1,0 +1,36 @@
+name: Run streaming producer (real AWS)
+
+# Manual trigger only. Sends simulated telemetry into the real SQS queue,
+# which triggers the already-deployed consumer Lambda and populates
+# DynamoDB -- run this whenever the real-AWS demo needs fresh live data
+# (e.g. right before presenting). Assumes `Deploy to real AWS` has already
+# been run at least once, so the queue/table/Lambda already exist.
+on:
+  workflow_dispatch:
+    inputs:
+      ticks:
+        description: "Number of ticks (readings per engine)"
+        required: false
+        default: "15"
+
+jobs:
+  produce:
+    runs-on: ubuntu-latest
+    env:
+      AWS_ENV: aws
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: us-east-1
+      S3_BUCKET: spacex-engines-project
+      SQS_QUEUE: engine-telemetry
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install -r requirements.txt
+
+      - name: Produce telemetry to SQS
+        run: python -m src.streaming.producer --ticks ${{ inputs.ticks }} --interval 1
