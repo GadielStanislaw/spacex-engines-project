@@ -54,6 +54,9 @@ ENGINE_SPECS = [
     {"rocket_family": "Electron", "engine_name": "Rutherford", "manufacturer": "Rocket Lab",
      "engine_count": 9, "propellant_type": "LOX/RP-1", "thrust_sl_kN": 22.7, "thrust_vac_kN": 25.8,
      "isp_sl_s": 303, "isp_vac_s": 311},
+    {"rocket_family": "New Glenn", "engine_name": "BE-4", "manufacturer": "Blue Origin",
+     "engine_count": 7, "propellant_type": "LOX/LNG", "thrust_sl_kN": 2400, "thrust_vac_kN": 2500,
+     "isp_sl_s": 292, "isp_vac_s": 310},
 ]
 
 s3 = boto3.client("s3")

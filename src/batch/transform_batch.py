@@ -30,7 +30,7 @@ from src.batch.engine_specs import ENGINE_SPECS
 
 RAW_FAMILY_FILES = [
     "falcon-9", "falcon-heavy", "saturn-v", "space-shuttle", "soyuz",
-    "atlas-v", "delta-iv-heavy", "ariane-5", "electron",
+    "atlas-v", "delta-iv-heavy", "ariane-5", "electron", "new-glenn",
 ]
 
 # Exact match by default; "starts with" only for families where every
