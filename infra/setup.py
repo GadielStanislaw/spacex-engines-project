@@ -1,4 +1,4 @@
-"""Create the S3 bucket, DynamoDB table, and Kinesis stream this project needs.
+"""Create the S3 bucket, DynamoDB table, and SQS queue this project needs.
 
 Run once against local (moto server) while building, and again against real
 AWS on demo day by setting AWS_ENV=aws in .env (or as an env var override).
@@ -10,7 +10,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from src.config import AWS_ENV, S3_BUCKET, DYNAMODB_TABLE, KINESIS_STREAM, AWS_REGION, boto3_kwargs
+from src.config import AWS_ENV, S3_BUCKET, DYNAMODB_TABLE, SQS_QUEUE, AWS_REGION, boto3_kwargs
 
 
 def create_bucket():
@@ -49,14 +49,14 @@ def create_dynamodb_table():
             raise
 
 
-def create_kinesis_stream():
-    kinesis = boto3.client("kinesis", **boto3_kwargs())
+def create_sqs_queue():
+    sqs = boto3.client("sqs", **boto3_kwargs())
     try:
-        kinesis.create_stream(StreamName=KINESIS_STREAM, ShardCount=1)
-        print(f"[kinesis] created stream: {KINESIS_STREAM}")
+        sqs.create_queue(QueueName=SQS_QUEUE)
+        print(f"[sqs] created queue: {SQS_QUEUE}")
     except ClientError as e:
-        if e.response["Error"]["Code"] == "ResourceInUseException":
-            print(f"[kinesis] stream already exists: {KINESIS_STREAM}")
+        if e.response["Error"]["Code"] == "QueueAlreadyExists":
+            print(f"[sqs] queue already exists: {SQS_QUEUE}")
         else:
             raise
 
@@ -65,5 +65,5 @@ if __name__ == "__main__":
     print(f"Setting up resources against AWS_ENV={AWS_ENV}")
     create_bucket()
     create_dynamodb_table()
-    create_kinesis_stream()
+    create_sqs_queue()
     print("Done.")

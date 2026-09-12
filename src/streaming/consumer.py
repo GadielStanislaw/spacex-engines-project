@@ -1,6 +1,6 @@
 """Lambda handler for the streaming leg.
 
-Triggered by a Kinesis event source mapping. For each telemetry record:
+Triggered by an SQS event source mapping. For each telemetry record:
   - maintains per-engine rolling mean/variance (Welford's online algorithm,
     stored in DynamoDB so state survives across separate invocations)
   - flags an anomaly when a field's z-score vs. its own rolling mean crosses
@@ -19,7 +19,6 @@ automatically (botocore reads AWS_ENDPOINT_URL natively) -- and on real AWS,
 that variable simply won't be set, so boto3 talks to real AWS by default. Same
 code, no branching.
 """
-import base64
 import json
 import os
 import time
@@ -82,9 +81,8 @@ def handler(event, context):
     raw_batch = []
 
     for record in event.get("Records", []):
-        payload = base64.b64decode(record["kinesis"]["data"])
         try:
-            reading = json.loads(payload)
+            reading = json.loads(record["body"])
             engine_id = reading["engine_id"]
             for field in FIELDS:
                 float(reading[field])

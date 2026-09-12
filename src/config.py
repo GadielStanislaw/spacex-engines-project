@@ -10,7 +10,7 @@ FLOCI_ENDPOINT = os.getenv("FLOCI_ENDPOINT", "http://localhost:4566")
 
 S3_BUCKET = os.getenv("S3_BUCKET", "spacex-engines-project")
 DYNAMODB_TABLE = os.getenv("DYNAMODB_TABLE", "latest_reading")
-KINESIS_STREAM = os.getenv("KINESIS_STREAM", "engine-telemetry")
+SQS_QUEUE = os.getenv("SQS_QUEUE", "engine-telemetry")
 
 
 def boto3_kwargs() -> dict:

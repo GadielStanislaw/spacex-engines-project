@@ -1,5 +1,5 @@
 """Streaming leg producer: simulates live engine telemetry and pushes it to
-Kinesis, one record per engine per tick.
+SQS, one message per engine per tick.
 
 Baselines are derived from real specs in engine_specs.py (not arbitrary):
   - thrust: the engine's real sea-level thrust
@@ -27,7 +27,7 @@ from pathlib import Path
 import boto3
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-from src.config import KINESIS_STREAM, S3_BUCKET, boto3_kwargs
+from src.config import SQS_QUEUE, S3_BUCKET, boto3_kwargs
 from src.batch.engine_specs import ENGINE_SPECS
 
 G0 = 9.80665  # standard gravity, m/s^2
@@ -69,22 +69,22 @@ def main():
     parser.add_argument("--interval", type=float, default=1.0, help="seconds between ticks (default 1.0)")
     args = parser.parse_args()
 
-    kinesis = boto3.client("kinesis", **boto3_kwargs())
+    sqs = boto3.client("sqs", **boto3_kwargs())
     s3 = boto3.client("s3", **boto3_kwargs())
     baselines = {spec["rocket_family"]: baseline_for(spec) for spec in ENGINE_SPECS}
 
     ground_truth = []  # every record's true label, not just the anomalous ones
 
-    print(f"Producing {args.ticks} ticks for {len(baselines)} engines to stream '{KINESIS_STREAM}'...")
+    queue_url = sqs.get_queue_url(QueueName=SQS_QUEUE)["QueueUrl"]
+    print(f"Producing {args.ticks} ticks for {len(baselines)} engines to queue '{SQS_QUEUE}'...")
     for tick in range(args.ticks):
         for engine_id, baseline in baselines.items():
             force_anomaly = random.random() < ANOMALY_PROBABILITY
             reading, anomaly_field = make_reading(engine_id, baseline, force_anomaly)
 
-            kinesis.put_record(
-                StreamName=KINESIS_STREAM,
-                Data=json.dumps(reading).encode("utf-8"),
-                PartitionKey=engine_id,
+            sqs.send_message(
+                QueueUrl=queue_url,
+                MessageBody=json.dumps(reading),
             )
             ground_truth.append({
                 "engine_id": engine_id,

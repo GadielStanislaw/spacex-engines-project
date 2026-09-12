@@ -107,4 +107,15 @@ ENGINE_SPECS = [
         "isp_sl_s": 303,
         "isp_vac_s": 311,
     },
+    {
+        "rocket_family": "New Glenn",
+        "engine_name": "BE-4",
+        "manufacturer": "Blue Origin",
+        "engine_count": 7,
+        "propellant_type": "LOX/LNG",
+        "thrust_sl_kN": 2400,
+        "thrust_vac_kN": 2500,
+        "isp_sl_s": 292,
+        "isp_vac_s": 310,
+    },
 ]
