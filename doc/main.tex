@@ -8,6 +8,7 @@
 \usepackage{xcolor}
 \usepackage{listings}
 \usepackage{booktabs}
+\usepackage{float}
 \usepackage{caption}
 
 \graphicspath{{images/}}
@@ -203,6 +204,18 @@ El despliegue y la generación de datos de prueba contra AWS real están automat
 \end{itemize}
 
 El mismo código del dashboard corre sin modificaciones contra Floci o contra AWS real.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{superiorDashboar.png}
+    \caption{Parte superior del dashboard -- métricas batch, tasa de éxito por familia de cohete (930 lanzamientos, 9 familias con datos válidos) e importancia de features del modelo, con la limitación honesta explícita.}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{inferiorDashboard.png}
+    \caption{Parte inferior del dashboard -- tabla de telemetría en vivo con los 10 motores (incluyendo New Glenn), 0 anomalías activas en este instante.}
+\end{figure}
 
 % ============================================================
 \section{Tecnologías utilizadas}
